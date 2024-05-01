@@ -7,4 +7,4 @@ COPY . ./
 
 RUN pip install -r requirements.txt
 
-ENTRYPOINT ["streamlit", "run", "Learn_Language.py", "--server.port=8080", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "🌍_Translate_and_Correct.py", "--server.port=8080", "--server.address=0.0.0.0"]
