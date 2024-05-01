@@ -38,9 +38,6 @@ def get_gemini_pro_vision_response(
 st.header("LinguaCoach - Translate & Correct via Chat", divider="rainbow")
 text_model_pro = GenerativeModel("gemini-1.0-pro-vision")
 
-def clear_chat_history():
-    st.session_state.messages = [{"role": "assistant", "content": help_response}]
-
 from_language = 'English'
 to_language = 'German'
 
@@ -81,7 +78,7 @@ with st.sidebar:
         horizontal=True, on_change=get_help_response
     )
     st.markdown(f'Learn to speak :orange[{to_language}]')
-
+    
     def update_slider(ikey, skey):
         st.session_state[skey] = st.session_state[ikey]
     def update_num(ikey, skey):
@@ -122,13 +119,11 @@ generation_config = {
     }
 
 # Store LLM generated responses
-help_txt = f"""Translate the text within quotes "How may I assist you today?" into {to_language}"""
-
 config = {
-"temperature": 0.8,
-"max_output_tokens": 2048,
-}
-
+    "temperature": 0.8,
+    "max_output_tokens": 2048,
+    }
+help_txt = f"""Translate the text within quotes "How may I assist you today?" into {to_language}"""
 help_response = get_gemini_pro_vision_response(
             text_model_pro,
             help_txt,
@@ -143,6 +138,8 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
+def clear_chat_history():
+    st.session_state.messages = [{"role": "assistant", "content": help_response}]
 st.sidebar.button('Reset Chat', on_click=clear_chat_history)
 
 def multiturn_generate_content(prompt_input):
@@ -151,7 +148,9 @@ def multiturn_generate_content(prompt_input):
 
     string_dialogue = "You are a helpful assistant. You do not respond as 'User' or pretend to be 'User'. You only respond once as 'Assistant'."
 
-    string_dialogue += f"""I want to learn to form grammatically correct sentences in {st.session_state.to_language} based on the provided text. You need to assist with translating the text within quotes "{prompt_input}" to {st.session_state.to_language}, if the text is not in {st.session_state.to_language}. Otherwise, if the text "{prompt_input}" is in {st.session_state.to_language}, verify if the text is grammatically correct in {st.session_state.to_language} and if it is not grammatically correct, provide the corrected text in {st.session_state.to_language} and explain the reason why the original text is not correct along with the correct grammar."""
+    # string_dialogue += f"""I want to learn to form grammatically correct sentences in {to_language} based on a scenario. You need to assist with translating the sentence within quotes "{prompt_input}" to {to_language}, otherwise, if the sentence is in {to_language}, verify if the sentence is grammatically correct in {to_language} and and if is not grammatically correct, provide the corrected sentence in {to_language} and explain the reason why the original sentence is not correct along with the correct grammar."""
+
+    string_dialogue += f"""I want to learn to form grammatically correct sentences in {st.session_state.to_language} based on the provided text. You need to assist with translating the text within quotes "{prompt_input}" to {st.session_state.to_language}, if the text is not in {st.session_state.to_language}. Otherwise, if the text "{prompt_input}" is in {st.session_state.to_language}, verify if the text is grammatically correct in {st.session_state.to_language} and if it is not grammatically correct, provide the corrected text in {st.session_state.to_language} and explain the reason why the original text is not correct along with the correct grammar."""   
 
     for dict_message in st.session_state.messages:
         # if dict_message["content"]:
@@ -168,6 +167,7 @@ def multiturn_generate_content(prompt_input):
         generation_config=generation_config,
         safety_settings=safety_settings
     )
+    answer = ''    
     answer = response.candidates[0].content.parts[0].text
     return answer
 

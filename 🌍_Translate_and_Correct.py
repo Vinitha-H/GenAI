@@ -76,17 +76,10 @@ def get_gemini_pro_vision_response(
     )
     final_response = []
     for response in responses:
-        if response.text.strip() != '':
-            try:
-                # st.write(response.text)
-                final_response.append(response.text)
-            except IndexError:
-                # pass
-                final_response.append("")
-                continue
-            except Exception as e:
-                print("The error is: ",e)
-                pass
+        try:
+            final_response.append(response.text)
+        except IndexError:
+            pass
     return "".join(final_response)
 
 st.header("LinguaCoach - Translate & Correct", divider="rainbow")
@@ -137,7 +130,7 @@ with st.sidebar:
         "Select the 'target' language: \n\n",
         ["English", "German", "French", "Italian"],
         key="to_language", index=1, on_change=update_lang,
-        horizontal=True, 
+        horizontal=True,
     )
     audio_language = st.radio(
         "Select the 'audio' language: \n\n",
@@ -146,20 +139,12 @@ with st.sidebar:
         horizontal=True,
     )
     st.markdown(f'Learn to speak :orange[{to_language}]')
-    
+
     def update_slider(ikey, skey):
         st.session_state[skey] = st.session_state[ikey]
     def update_num(ikey, skey):
-        st.session_state[ikey] = st.session_state[skey]            
-
-    # val = st.number_input('Input', value = 0, key = 'numeric', on_change = update_slider)
-
-    # slider_value = st.slider('slider', min_value = 0, 
-    #                         value = val, 
-    #                         max_value = 5,
-    #                         step = 1,
-    #                         key = 'slider', on_change= update_numin)
-
+        st.session_state[ikey] = st.session_state[skey]     
+    
     def custom_slider_with_input(label, min_value, max_value, value, step, key, help):
 
         input_value = st.sidebar.number_input(label=label, min_value=min_value, max_value=max_value, value=value, step=step, key=f'i{key}', on_change=update_slider, args=[f'i{key}', f's{key}'], help=help)   
@@ -177,16 +162,13 @@ with st.sidebar:
 
     token_tt = """Output token limit determines the maximum amount of text output from one prompt. A token is approximately four characters."""
     
-    # temperature = st.sidebar.slider('Temperature', min_value=0.01, max_value=5.0, value=1.0, step=0.01, key='temp')
     temperature = custom_slider_with_input("Temperature", min_value=0.01, max_value=2.0, value=1.0, step=0.01, key='temp', help=temp_tt)
-    # top_p = st.sidebar.slider('top_p', min_value=0.01, max_value=1.0, value=0.95, step=0.01)
-    # max_length = st.sidebar.slider('Output token limit', min_value=2048, max_value=8192, value=2048, step=8, key='token')
     max_length = custom_slider_with_input('Output token limit', min_value=2048, max_value=8192, value=2048, step=8, key='token', help=token_tt)
 
     def clear_history():
         st.session_state.response = ''
 
-    st.sidebar.button('Clear Response', on_click=clear_history)
+    st.sidebar.button('Clear Response', on_click=clear_history)    
 
 # temperature = 1.0
 top_p = 0.95
@@ -209,10 +191,10 @@ if task:
     "temperature": 0.8,
     "max_output_tokens": 2048,
     }
-    prompt_lang = f"""Mention the language in which the text within quotes "{task}" is written in, in just one word"""
+    prompt1 = f"""Mention the language in which the text within quotes "{task}" is written in, in just one word"""
     task_response = get_gemini_pro_vision_response( # changed from text_response
                 text_model_pro,
-                prompt_lang,
+                prompt1,
                 generation_config=config,
             )
     # if task_response:
@@ -232,11 +214,11 @@ if trans_chk:
     prompt1 = f"""You need to assist with translating the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language} then translate the text to {orig_lang}"""
 else:
     prompt1 = f"""I want to learn to form grammatically correct sentences in {to_language} based on a {context} scenario / context. You need to assist with translating the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language}, verify if the text is grammatically correct in {to_language} and and if not grammatically correct, provide the corrected text in {to_language} and explain the reason why the original sentences are not correct along with the correct grammar. Additionally provide alternative sentence constructs with similar meaning."""
+# print("prompt1:", prompt1)
 config = {
     "temperature": temperature, # 0.8,
     "max_output_tokens": 2048,
 }
-# print("prompt1:", prompt1)
 
 generate_t2t = st.button("Generate", key="generate_t2t")
 if generate_t2t and prompt1:
@@ -261,6 +243,7 @@ if generate_t2t and prompt1:
 
         # generate_audio = st.button("Generate Audio", key="generate_audio", on_click=text_to_wav, args=["de-DE-Neural2-B", response])
         # st.markdown(response)
+
         match audio_language:
             case "English":
                 speech_lang = "en-GB-Neural2-B"
@@ -273,7 +256,8 @@ if generate_t2t and prompt1:
             case _:
                 speech_lang = "en-GB-Neural2-B"
 
-        # text_to_wav(speech_lang, response.replace('*', ''))
+        text_to_wav(speech_lang, response.replace('*', ''))
+
             # if os.path.isfile('./de-DE-Neural2-B.wav'):
             #     st.audio("de-DE-Neural2-B.wav", format="audio/wav", loop=False)
 
