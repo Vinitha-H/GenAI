@@ -14,12 +14,10 @@ import base64
 import vertexai.preview.generative_models as generative_models
 import google.cloud.texttospeech as tts
 
-PROJECT_ID = 'genai-420915' # os.environ.get("GCP_PROJECT")  # Your Google Cloud Project ID
-LOCATION = 'us-central1' # os.environ.get("GCP_REGION")  # Your Google Cloud Project Region
+PROJECT_ID = 'genai-420915' # os.environ.get("GCP_PROJECT")  
+LOCATION = 'us-central1' # os.environ.get("GCP_REGION")  
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 st.config._set_option("global.disableWidgetStateDuplicationWarning", True, "test")
-
-# print(PROJECT_ID, LOCATION)
 
 st.set_page_config(page_title="LinguaCoach", page_icon="🌍")
 
@@ -102,7 +100,7 @@ def text_to_wav(voice_name: str, text: str):
     )
 
     filename = f"{voice_name}.wav"
-    print("sound file:", filename)
+    # print("sound file:", filename)
     with open(filename, "wb") as out:
         out.write(response.audio_content)
         print(f'Generated speech saved to "{filename}"')
@@ -118,7 +116,6 @@ with st.sidebar:
     def update_lang():
         st.session_state.audio_language = st.session_state.to_language
 
-    # Premise
     from_language = st.radio(
         "Select the 'source' language: \n\n",
         ["English", "German", "French", "Italian"],
@@ -149,7 +146,7 @@ with st.sidebar:
 
         input_value = st.sidebar.number_input(label=label, min_value=min_value, max_value=max_value, value=value, step=step, key=f'i{key}', on_change=update_slider, args=[f'i{key}', f's{key}'], help=help)   
 
-        slider_value = st.sidebar.slider(label=label, label_visibility='hidden', min_value=min_value, max_value=max_value, value=value, step=step, key=f's{key}', on_change=update_num, args=[f'i{key}', f's{key}'])
+        slider_value = st.sidebar.slider(label=label, label_visibility='collapsed', min_value=min_value, max_value=max_value, value=value, step=step, key=f's{key}', on_change=update_num, args=[f'i{key}', f's{key}'])
   
         return input_value
 
@@ -177,97 +174,203 @@ top_p = 0.95
 st.markdown("*:green[Powered by Vertex AI Gemini]*")
 st.subheader("Translate & Perfect Any Text")
 
-# st.markdown(f'Learn to speak :orange[{to_language}]')
-context = st.text_area(
-    "Context / Scenario: \n\n", key="context", max_chars=2000, placeholder="Type a scenario"
+tab1, tab2 = st.tabs(
+    ["Text input", "Audio input"]
 )
 
-task = st.text_area(
-    "Content: \n\n", key="task", max_chars=2000, placeholder="Type a sentence"
-)
-task_response = ''
-if task:
+with tab1:
+    context = st.text_area(
+        "Context / Scenario: \n\n", key="context", max_chars=2000, placeholder="Type a scenario"
+    )
+
+    task = st.text_area(
+        "Content: \n\n", key="task", max_chars=2000, placeholder="Type a sentence"
+    )
+
+    context = context.replace('"', "'")
+    task = task.replace('"', "'")
+
+    task_response = ''
+    if task:
+        config = {
+        "temperature": 0.8,
+        "max_output_tokens": 2048,
+        }
+        prompt_task_lang = f"""Mention the language in which the text within quotes "{task}" is written in, in just one word"""
+        task_response = get_gemini_pro_vision_response( 
+                    text_model_pro,
+                    prompt_task_lang,
+                    generation_config=config,
+                )
+
+    if task_response!= '' and from_language != task_response.strip():
+        from_language = task_response
+
+    if context.strip() == '':
+        context = "general or any"
+
+    trans_chk = st.checkbox('Content - Translate Only', key='trans_chk')
+
+    prompt1 = f"""I want to learn to form grammatically correct sentences in {to_language} based on a {context} scenario / context. You need to assist with translating the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language}, verify if the text is grammatically correct in {to_language} and and if not grammatically correct, provide the corrected text in {to_language} and explain the reason why the original sentences are not correct along with the correct grammar. Additionally provide alternative sentence constructs with similar meaning."""
+
+    if trans_chk:
+        prompt1 = f"""Translate the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language} then translate the text to {from_language}"""
+        # multimodal_model_pro = 'gemini-1.0-pro-vision'
+        use_model = text_model_pro
+        top_p = 0.4
+    else:
+        use_model = multimodal_model_pro
+        top_p = 0.95
+
     config = {
-    "temperature": 0.8,
-    "max_output_tokens": 2048,
+        "temperature": temperature, # 0.8,
+        "max_output_tokens": max_length # 2048,
     }
-    prompt1 = f"""Mention the language in which the text within quotes "{task}" is written in, in just one word"""
-    task_response = get_gemini_pro_vision_response( # changed from text_response
-                text_model_pro,
+
+    generate_t2t = st.button("Translate and Explain", key="generate_t2t")
+    if generate_t2t and prompt1 != '':
+        with st.spinner("Processing ..."):
+            response = get_gemini_pro_vision_response( 
+                # multimodal_model_pro,
+                use_model,
                 prompt1,
                 generation_config=config,
             )
-    # if task_response:
-    #     st.write("The text is in:")
-    #     st.write(task_response)
+            if response:
+                st.divider()
 
+                if "response" not in st.session_state.keys():
+                    st.session_state.response = response
 
-if task_response!= '' and from_language != task_response.strip():
-    from_language = task_response
+                st.write(response)
 
-if context.strip() == '':
-    context = "general or any"
+            match audio_language:
+                case "English":
+                    speech_lang = "en-GB-Neural2-B"
+                case "German":
+                    speech_lang = "de-DE-Neural2-B"
+                case "French":
+                    speech_lang = "fr-FR-Neural2-A"
+                case "Italian":
+                    speech_lang = "it-IT-Neural2-A"
+                case _:
+                    speech_lang = "en-GB-Neural2-B"
 
-trans_chk = st.checkbox('Translate Only')
-# print('trans_chk', trans_chk)
-if trans_chk:
-    prompt1 = f"""You need to assist with translating the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language} then translate the text to {orig_lang}"""
-else:
-    prompt1 = f"""I want to learn to form grammatically correct sentences in {to_language} based on a {context} scenario / context. You need to assist with translating the text within quotes "{task}" to {to_language}, otherwise, if the text provided is in {to_language}, verify if the text is grammatically correct in {to_language} and and if not grammatically correct, provide the corrected text in {to_language} and explain the reason why the original sentences are not correct along with the correct grammar. Additionally provide alternative sentence constructs with similar meaning."""
-# print("prompt1:", prompt1)
-config = {
-    "temperature": temperature, # 0.8,
-    "max_output_tokens": 2048,
-}
+            text_to_wav(speech_lang, response.replace('*', ''))
 
-generate_t2t = st.button("Generate", key="generate_t2t")
-if generate_t2t and prompt1:
-    # st.write(prompt1)
-    with st.spinner("Processing ..."):
-        # first_tab1, first_tab2 = st.tabs(["Translation", "Prompt"])
-        # with first_tab1:
-        response = get_gemini_pro_vision_response( # changed from text_response
-            multimodal_model_pro,
-            prompt1,
-            generation_config=config,
+with tab2:
+    # speech to text
+    st.markdown("**Audio transcription and Translation**")
+    uploaded_file = st.file_uploader("Choose an audio file", type=['wav'])
+
+    from google.cloud import speech       
+    from google.cloud import storage
+
+    def upload_blob(bucket_name, source_file_name, destination_blob_name):
+        """Uploads a file to the bucket."""
+        # The ID of your GCS bucket
+        # bucket_name = "your-bucket-name"
+        # The path to your file to upload
+        # source_file_name = "local/path/to/file"
+        # The ID of your GCS object
+        # destination_blob_name = "storage-object-name"
+
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(destination_blob_name)
+
+        # Optional: set a generation-match precondition to avoid potential race conditions
+        # and data corruptions. The request to upload is aborted if the object's
+        # generation number does not match your precondition. For a destination
+        # object that does not yet exist, set the if_generation_match precondition to 0.
+        # If the destination object already exists in your bucket, set instead a
+        # generation-match precondition using its generation number.
+        generation_match_precondition = 1
+
+        # blob.upload_from_filename(source_file_name, if_generation_match=generation_match_precondition)
+        blob.upload_from_filename(source_file_name)
+
+        print(
+            f"File {source_file_name} uploaded to {destination_blob_name}."
         )
-        if response:
-            # st.markdown(':red[**Response**]')
-            st.divider()
-            # st.write(response)
 
-            if "response" not in st.session_state.keys():
-                st.session_state.response = response
+    def transcribe_gcs(gcs_uri: str) -> str:
+        """Asynchronously transcribes the audio file specified by the gcs_uri.
 
-            st.write(response)
+        Args:
+            gcs_uri: The Google Cloud Storage path to an audio file.
 
-        # generate_audio = st.button("Generate Audio", key="generate_audio", on_click=text_to_wav, args=["de-DE-Neural2-B", response])
-        # st.markdown(response)
+        Returns:
+            The generated transcript from the audio file provided.
+        """
+        client = speech.SpeechClient()
 
+        audio = speech.RecognitionAudio(uri=gcs_uri)
         match audio_language:
             case "English":
-                speech_lang = "en-GB-Neural2-B"
+                audio_lang = "en-GB"
             case "German":
-                speech_lang = "de-DE-Neural2-B"
+                audio_lang = "de-DE"
             case "French":
-                speech_lang = "fr-FR-Neural2-A"
+                audio_lang = "fr-FR"
             case "Italian":
-                speech_lang = "it-IT-Neural2-A"
+                audio_lang = "it-IT"
             case _:
-                speech_lang = "en-GB-Neural2-B"
+                audio_lang = "en-GB"
 
-        text_to_wav(speech_lang, response.replace('*', ''))
+        config = speech.RecognitionConfig(
+            language_code=audio_lang,
+        )
 
-            # if os.path.isfile('./de-DE-Neural2-B.wav'):
-            #     st.audio("de-DE-Neural2-B.wav", format="audio/wav", loop=False)
+        operation = client.long_running_recognize(config=config, audio=audio)
 
-            # if generate_audio:
-            #     print('generating audio')
-            #     text_to_wav("de-DE-Neural2-B", response)
+        # print("Waiting for operation to complete...")
+        response = operation.result(timeout=180)
 
-        # with first_tab2:
-        #     st.markdown(prompt1)
+        transcript_builder = []
+        # Each result is for a consecutive portion of the audio. Iterate through
+        # them to get the transcripts for the entire audio file.
+        for result in response.results:
+            # The first alternative is the most likely one for this portion.
+            transcript_builder.append(f"\n{result.alternatives[0].transcript}")
+            # transcript_builder.append(f"\nConfidence: {result.alternatives[0].confidence}")
 
+        transcript = "".join(transcript_builder)
 
+        return transcript
 
+    generate_s2t = st.button("Translate Audio", key="generate_s2t")
 
+    if generate_s2t and uploaded_file is not None:
+        import tempfile
+        bucket_name = 'vinharith-genai'
+
+        with st.spinner("Processing audio..."):
+            temp_dir = tempfile.mkdtemp()
+            filepath = os.path.join(temp_dir, uploaded_file.name)
+            with open(filepath, "wb") as f:
+                    f.write(uploaded_file.getvalue())
+
+            upload_blob(bucket_name, filepath, uploaded_file.name)
+        
+            audio_transcript = transcribe_gcs(f'gs://{bucket_name}/{uploaded_file.name}')    
+            st.write(":orange[Audio Transcript]")
+            st.write(audio_transcript)
+
+            # translate
+            st.divider()
+            st.write(":orange[Audio Translation]")
+            audio_prompt = f"""Translate the text {audio_transcript} within quotes to {to_language} otherwise, if the text provided is in {to_language} then translate the text to {from_language}"""
+            config = {
+                "temperature": temperature, # 0.8,
+                "max_output_tokens": max_length, # 2048,
+                "top_p": 0.95
+            }
+            audio_response = get_gemini_pro_vision_response(
+                    multimodal_model_pro,
+                    audio_prompt,
+                    generation_config=config,
+                )
+            if audio_response:
+                st.write(audio_response)
+                st.divider()

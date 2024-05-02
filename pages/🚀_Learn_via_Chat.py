@@ -88,7 +88,7 @@ with st.sidebar:
 
         input_value = st.sidebar.number_input(label=label, min_value=min_value, max_value=max_value, value=value, step=step, key=f'i{key}', on_change=update_slider, args=[f'i{key}', f's{key}'], help=help)   
 
-        slider_value = st.sidebar.slider(label=label, label_visibility='hidden', min_value=min_value, max_value=max_value, value=value, step=step, key=f's{key}', on_change=update_num, args=[f'i{key}', f's{key}'])
+        slider_value = st.sidebar.slider(label=label, label_visibility='collapsed', min_value=min_value, max_value=max_value, value=value, step=step, key=f's{key}', on_change=update_num, args=[f'i{key}', f's{key}'])
   
         return input_value
 
