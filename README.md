@@ -22,3 +22,6 @@ Delving into the nuances of Vertex-AI Gemini prompt engineering, and user experi
 ## What's next for LinguaCoach - Translate & Correct
 While the current iteration serves as a prototype with limited functionality, the potential for expansion is vast. The next enhancement would have been the ability to also upload and translate documents and thereby offering better support while trying to learn a new language.
 Imagine a Language Buddy—a fully realized language coach with a speech-based interface enabling users to practice real-life scenarios such as job interviews or sales pitches in different languages. This tool could aid in perfecting diction, intonation, and various speaking forms, fostering connection and understanding across cultures. Whether as a standalone start-up venture or as an integrated feature in existing language learning platforms, the possibilities for this project are boundless.
+
+![LinguaCoach](https://github.com/Vinitha-H/GenAI/assets/168436312/a869f4cd-d468-44fe-bc15-e377c7857b10)
+
